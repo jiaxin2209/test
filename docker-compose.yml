@@ -1,0 +1,55 @@
+version: '3'
+services:
+  jenkins:
+    container_name: jenkins
+    build: ./jenkins
+    ports:
+      - '8080:8080'
+      - '443:8443'
+      - '50000:50000'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./jenkins_home:/var/jenkins_home
+      - ./webapp/.git:/home/git:ro
+    privileged: true
+    environment:
+      - JAVA_OPTS=-Xmx2048m -Dhudson.plugins.git.GitSCM.ALLOW_LOCAL_CHECKOUT=true
+    networks:
+      - jenkins_network
+
+  webapp:
+    container_name: webapp
+    build: ./webapp
+    ports:
+      - "80:80"
+    networks:
+      - jenkins_network
+
+  git-server:
+    build:
+      dockerfile: gitserver.Dockerfile
+      context: .
+    restart: always
+    ports:
+      - "3000:3000"
+
+  sonarqube:
+    image: sonarqube:latest
+    container_name: sonarqube
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    ports:
+      - '9000:9000'
+    networks:
+      - jenkins_network
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+
+volumes:
+  jenkins_data:
+    driver: local
+  sonarqube_data:
+
+networks:
+  jenkins_network:
+    driver: bridge
